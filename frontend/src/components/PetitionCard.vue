@@ -1,6 +1,6 @@
 <script setup>
 import { RouterLink } from 'vue-router'
-import { dateLabel, excerpt, statusLabel } from '../format.js'
+import { dateLabel, excerpt, statusLabel, voteLabel } from '../format.js'
 defineProps({ petition: { type: Object, required: true } })
 </script>
 
@@ -18,10 +18,13 @@ defineProps({ petition: { type: Object, required: true } })
         <span>{{ dateLabel(petition.created_at) }}</span>
       </div>
       <div class="card-bottom d-flex align-items-center justify-content-between mt-3 pt-3">
-        <span class="vote-count"><strong>{{ petition.vote_count }}</strong><span v-if="petition.vote_threshold"> / {{ petition.vote_threshold }}</span> голосів</span>
-        <RouterLink class="btn btn-outline-primary btn-sm" :to="{ name: 'petition', params: { id: petition.id } }">Переглянути</RouterLink>
+        <span class="vote-count">{{ voteLabel(petition.vote_count, petition.vote_threshold) }}</span>
+        <RouterLink
+          class="btn btn-outline-primary btn-sm"
+          :to="{ name: 'petition', params: { id: petition.id } }"
+          :aria-label="`Переглянути петицію «${petition.title}»`"
+        >Переглянути</RouterLink>
       </div>
     </div>
   </article>
 </template>
-

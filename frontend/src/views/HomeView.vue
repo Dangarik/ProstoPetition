@@ -2,7 +2,7 @@
 import { reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api.js'
-import { PUBLIC_STATUSES, STATUS } from '../format.js'
+import { PUBLIC_STATUSES, STATUS, PAGE_SIZE } from '../format.js'
 import PetitionCard from '../components/PetitionCard.vue'
 
 const route = useRoute()
@@ -149,10 +149,10 @@ loadCategories()
               <PetitionCard :petition="petition" />
             </div>
           </div>
-          <nav v-if="count > 20" class="d-flex justify-content-between align-items-center mt-4" aria-label="Сторінки петицій">
-            <button class="btn btn-outline-secondary" type="button" :disabled="page <= 1" @click="changePage(page - 1)">← Назад</button>
-            <span>Сторінка {{ page }} з {{ Math.ceil(count / 20) }}</span>
-            <button class="btn btn-outline-secondary" type="button" :disabled="page >= Math.ceil(count / 20)" @click="changePage(page + 1)">Далі →</button>
+          <nav v-if="count > PAGE_SIZE" class="d-flex justify-content-between align-items-center mt-4" aria-label="Сторінки петицій">
+            <button class="btn btn-outline-secondary" type="button" :disabled="page <= 1" @click="changePage(page - 1)" aria-label="Попередня сторінка">← Назад</button>
+            <span>Сторінка {{ page }} з {{ Math.ceil(count / PAGE_SIZE) }}</span>
+            <button class="btn btn-outline-secondary" type="button" :disabled="page >= Math.ceil(count / PAGE_SIZE)" @click="changePage(page + 1)" aria-label="Наступна сторінка">Далі →</button>
           </nav>
         </template>
       </div>
