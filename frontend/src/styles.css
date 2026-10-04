@@ -1,0 +1,92 @@
+:root {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #17334a;
+  background: #f8f7f3;
+  font-synthesis: none;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; background: #f8f7f3; color: #17334a; }
+h1, h2, h3, h4, .navbar-brand { font-family: system-ui, sans-serif; font-weight: 800; letter-spacing: -.035em; }
+a { color: #17658b; }
+a:hover { color: #0d4767; }
+.app-shell { min-height: 100vh; display: flex; flex-direction: column; }
+.site-header { background: #fff; border-bottom: 1px solid #e7ebe9; }
+.navbar-brand { color: #17334a; font-size: 1.22rem; }
+.navbar-brand:hover { color: #17334a; }
+.brand-accent { color: #bd7935; }
+.nav-link { font-weight: 600; color: #456175; }
+.nav-link.router-link-active { color: #0f5c7c; }
+.btn { font-weight: 700; border-radius: .75rem; padding: .62rem 1.05rem; }
+.btn-sm { padding: .45rem .9rem; }
+.btn-primary { --bs-btn-bg: #146887; --bs-btn-border-color: #146887; --bs-btn-hover-bg: #0e506c; --bs-btn-hover-border-color: #0e506c; --bs-btn-active-bg: #0d4963; --bs-btn-active-border-color: #0d4963; }
+.btn-outline-primary { --bs-btn-color: #146887; --bs-btn-border-color: #146887; --bs-btn-hover-bg: #146887; --bs-btn-hover-border-color: #146887; }
+.form-control, .form-select { border-radius: .7rem; border-color: #d8e0df; min-height: 46px; }
+.form-control:focus, .form-select:focus { border-color: #51a2b8; box-shadow: 0 0 0 .2rem rgba(20, 104, 135, .12); }
+.form-label { font-weight: 700; font-size: .92rem; }
+.hero { background: radial-gradient(circle at 78% 15%, rgba(232, 181, 106, .27), transparent 29%), linear-gradient(115deg, #15314a, #225c72); color: #fff; }
+.hero-copy { max-width: 760px; padding: 1.25rem 0; }
+.hero h1 { font-size: clamp(2.3rem, 5vw, 4rem); line-height: 1.12; max-width: 700px; }
+.hero .lead { color: #d5e7ec; max-width: 620px; }
+.eyebrow { color: #bd7935; font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .13em; }
+.hero .eyebrow { color: #f2bd77; }
+.section-heading h2, .page-heading h1 { color: #17334a; }
+.page-heading h1 { font-size: clamp(2rem, 4vw, 3rem); }
+.filter-panel, .auth-card, .form-card, .detail-card, .profile-card, .moderation-card, .state-panel {
+  background: #fff; border: 1px solid #e6e9e6; border-radius: 1.1rem; box-shadow: 0 10px 28px rgba(19, 48, 65, .045);
+}
+.filter-panel { padding: 1.5rem; }
+.petition-card { border-radius: 1.1rem; box-shadow: 0 10px 28px rgba(19, 48, 65, .055); transition: transform .2s, box-shadow .2s; }
+.petition-card:hover { transform: translateY(-3px); box-shadow: 0 17px 32px rgba(19, 48, 65, .09); }
+.petition-card .card-body { padding: 1.5rem; }
+.petition-card h3 { line-height: 1.35; }
+.petition-card h3 a { text-decoration: none; color: #17334a; }
+.petition-card h3 a:hover { color: #146887; }
+.category-pill, .status-pill { display: inline-flex; align-items: center; border-radius: 999px; padding: .34rem .7rem; font-size: .75rem; font-weight: 800; line-height: 1.2; white-space: nowrap; }
+.category-pill { background: #edf4f5; color: #176687; }
+.status-pill { background: #edf0f2; color: #4e6674; }
+.status-active { background: #e2f4e9; color: #1d7450; }
+.status-in_review { background: #e8eef9; color: #325b96; }
+.status-answered { background: #e5f3f2; color: #176f71; }
+.status-rejected, .status-hidden { background: #fae7e3; color: #9d4b43; }
+.status-moderation { background: #fff2dc; color: #936523; }
+.card-meta { font-size: .82rem; }
+.card-bottom { border-top: 1px solid #edf0ef; }
+.vote-count { color: #4f6877; font-size: .86rem; }
+.vote-count strong { color: #17334a; font-size: 1.1rem; }
+.state-panel { padding: 2rem; text-align: center; color: #607586; }
+.error-panel { border-color: #e5b5b0; }
+.auth-card { max-width: 480px; padding: clamp(1.5rem, 4vw, 2.5rem); }
+.form-card { max-width: 800px; padding: clamp(1.5rem, 4vw, 2.5rem); }
+.detail-card { padding: clamp(1.5rem, 5vw, 3rem); }
+.detail-card h1 { font-size: clamp(2rem, 4.5vw, 3.2rem); line-height: 1.18; }
+.detail-meta { font-size: .9rem; border-bottom: 1px solid #e9eeed; padding-bottom: 1.5rem; }
+.petition-text { white-space: pre-wrap; line-height: 1.85; font-size: 1.04rem; color: #2e495b; }
+.official-response { border-left: 4px solid #dca563; background: #fff9ed; padding: 1.5rem; border-radius: 0 .8rem .8rem 0; }
+.detail-actions { border-top: 1px solid #e9eeed; }
+.vote-tally { display: flex; flex-direction: column; min-width: 100px; color: #6e8490; font-size: .82rem; }
+.vote-tally strong { color: #17334a; font-family: system-ui, sans-serif; font-size: 1.9rem; line-height: 1.1; }
+.profile-card { padding: 1.5rem; display: flex; align-items: center; gap: 1rem; }
+.profile-avatar { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: #deedf0; color: #176687; font-family: system-ui, sans-serif; font-size: 1.8rem; font-weight: 800; }
+.petition-table .list-group-item { border-color: #e8edec; padding: 1.1rem 1.25rem; }
+.moderation-card { padding: 1.5rem; }
+.stat-card { background: #fff; border: 1px solid #e6e9e6; border-radius: 1rem; padding: 1.2rem; display: flex; flex-direction: column; gap: .5rem; box-shadow: 0 10px 28px rgba(19, 48, 65, .04); }
+.stat-card span { color: #6a7d89; font-size: .83rem; }
+.stat-card strong { color: #17334a; font-family: system-ui, sans-serif; font-size: 2rem; }
+.category-list { list-style: none; padding: 0; }
+.category-list li { border-bottom: 1px solid #e9eeed; padding: .6rem 0; }
+.back-link { display: inline-block; text-decoration: none; font-weight: 700; }
+.link-button { border: 0; background: none; color: #0d668c; text-decoration: underline; padding: 0; font-weight: 700; }
+.site-footer { color: #9ab1bf; background: #15314a; font-size: .88rem; }
+@media (max-width: 991px) {
+  .navbar-collapse { padding-top: 1rem; }
+  .filter-panel { margin-bottom: 1rem; }
+}
+@media (max-width: 576px) {
+  .hero .container { padding-top: 2.8rem !important; padding-bottom: 2.8rem !important; }
+  .petition-card .card-body { padding: 1.25rem; }
+  .profile-card { flex-wrap: wrap; }
+  .profile-card .status-pill { margin-left: 0 !important; }
+  .detail-actions .btn { width: 100%; }
+}
+
+
