@@ -1,0 +1,40 @@
+﻿from django.db import transaction
+from django.utils import timezone
+from rest_framework.exceptions import APIException
+from .models import Petition, Response
+
+class PetitionConflict(APIException):
+    status_code = 409
+    default_detail = "Операція несумісна з поточним станом петиції."
+
+TRANSITIONS = {
+    Petition.Status.MODERATION: {Petition.Status.ACTIVE, Petition.Status.REJECTED},
+    Petition.Status.ACTIVE: {Petition.Status.HIDDEN, Petition.Status.IN_REVIEW, Petition.Status.CLOSED},
+}
+
+def change_status(petition_id, new_status, reason=""):
+    with transaction.atomic():
+        petition = Petition.objects.select_for_update().get(pk=petition_id)
+        if new_status not in TRANSITIONS.get(petition.status, set()):
+            raise PetitionConflict("Недозволений перехід стану.")
+        if new_status in (Petition.Status.REJECTED, Petition.Status.HIDDEN) and not reason.strip():
+            raise PetitionConflict("Причина відхилення або приховування є обов’язковою.")
+        if new_status == Petition.Status.ACTIVE and petition.deadline <= timezone.now():
+            raise PetitionConflict("Термін петиції вже завершився.")
+        petition.status = new_status
+        petition.moderation_reason = reason.strip() if new_status in (Petition.Status.REJECTED, Petition.Status.HIDDEN) else ""
+        petition.status_changed_at = timezone.now()
+        petition.save(update_fields=["status", "moderation_reason", "status_changed_at"])
+        return petition
+
+def publish_response(petition_id, author, text):
+    with transaction.atomic():
+        petition = Petition.objects.select_for_update().get(pk=petition_id)
+        if petition.status != Petition.Status.IN_REVIEW or Response.objects.filter(petition=petition).exists():
+            raise PetitionConflict("Відповідь можлива лише один раз для петиції на розгляді.")
+        response = Response.objects.create(petition=petition, author=author, text=text)
+        petition.status = Petition.Status.ANSWERED
+        petition.status_changed_at = timezone.now()
+        petition.save(update_fields=["status", "status_changed_at"])
+        return response
+
