@@ -9,6 +9,7 @@ class VoteView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request, pk):
         get_object_or_404(Petition, pk=pk)
-        vote, count = cast_vote(pk, request.user)
-        return Response({"id": vote.id, "petition": pk, "vote_count": count}, status=201)
+        vote, count, petition_status, is_active = cast_vote(pk, request.user)
+        return Response({"id": vote.id, "petition": pk, "vote_count": count,
+                         "status": petition_status, "is_active": is_active}, status=201)
 

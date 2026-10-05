@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import Category, Petition
 from .serializers import CategorySerializer, PetitionSerializer, ResponseSerializer
-from .services import PetitionConflict, change_status, publish_response
+from .services import PetitionConflict, change_status, publish_response, reconcile_category_threshold
 
 def petition_queryset():
     return Petition.objects.select_related("author", "category", "official_response", "official_response__author").annotate(vote_count=Count("votes"))
@@ -89,6 +89,9 @@ class CategoryDetail(generics.RetrieveUpdateDestroyAPIView):
     http_method_names = ["get", "patch", "delete"]
     def get_permissions(self):
         return [AllowAny()] if self.request.method == "GET" else [IsAdminUser()]
+    def perform_update(self, serializer):
+        category = serializer.save()
+        reconcile_category_threshold(category.pk)
     def perform_destroy(self, instance):
         if instance.petitions.exists():
             raise PetitionConflict("Категорію використовують петиції.")
@@ -113,6 +116,8 @@ class StatusView(APIView):
             raise ValidationError({"status": "Невідомий статус."})
         if not isinstance(reason, str):
             raise ValidationError({"reason": "Причина має бути текстом."})
+        if "vote_threshold" in request.data:
+            raise ValidationError({"vote_threshold": "Поріг голосів змінюють у категорії."})
         petition = change_status(pk, new_status, reason)
         return Response(PetitionSerializer(petition_queryset().get(pk=petition.pk)).data)
 
