@@ -54,7 +54,14 @@ Windows PowerShell:
 
 pip install -r requirements.txt
 
-Задати змінні середовища DJANGO_SECRET_KEY та MYSQL_DATABASE, MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST, MYSQL_PORT.
+Задати змінні середовища:
+
+export DJANGO_DEBUG=1
+export MYSQL_DATABASE=prostopetition
+export MYSQL_USER=prostopetition
+export MYSQL_PASSWORD='password'
+export MYSQL_HOST=127.0.0.1
+export MYSQL_PORT=3306
 
 Виконати міграції:
 
@@ -78,6 +85,7 @@ cd frontend
 
 npm install
 
+npm ci
 Запустити Vite:
 
 npm run dev
