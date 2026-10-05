@@ -1,4 +1,4 @@
-﻿from datetime import timedelta
+from datetime import timedelta
 from django.db import migrations
 from django.utils import timezone
 
@@ -32,8 +32,6 @@ def forwards(apps, schema_editor):
             state = "closed"
         else:
             state = "active"
-        # Старий проєкт не зберігав дедлайн. Для імпортованих активних
-        # петицій відлік починається з дати перенесення.
         deadline = now + timedelta(days=30) if state == "active" else old.time_create + timedelta(days=30)
         Petition.objects.using(db).create(
             id=old.id, title=old.title, text=old.text or "(Текст не збережено)",
