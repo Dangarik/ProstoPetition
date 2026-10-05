@@ -2,11 +2,17 @@
 from django.contrib import admin
 from django.utils import timezone
 from .models import Category, Petition, Response
-from .services import TRANSITIONS, change_status, publish_response
+from .services import TRANSITIONS, change_status, publish_response, reconcile_category_threshold
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "vote_threshold", "max_years", "max_months", "max_days")
     search_fields = ("name",)
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if change and "vote_threshold" in form.changed_data:
+            reconcile_category_threshold(obj.pk)
 
 class PetitionAdminForm(forms.ModelForm):
     class Meta:
@@ -24,6 +30,8 @@ class PetitionAdminForm(forms.ModelForm):
                 self.add_error("moderation_reason", "Причина є обов’язковою.")
             if target == Petition.Status.ACTIVE and current.deadline <= timezone.now():
                 self.add_error("status", "Термін петиції вже завершився.")
+            if target == Petition.Status.ACTIVE and current.category.vote_threshold is None:
+                self.add_error("status", "Спочатку вкажіть поріг голосів для категорії.")
         return data
 
 @admin.register(Petition)
@@ -41,7 +49,7 @@ class PetitionAdmin(admin.ModelAdmin):
         return ("title", "text", "author", "category", "deadline")
 
     def get_readonly_fields(self, request, obj=None):
-        return self.readonly_fields if obj else ("created_at", "status_changed_at")
+        return self.readonly_fields if obj else ("deadline", "created_at", "status_changed_at")
 
     def vote_count(self, obj):
         return obj.votes.count()
@@ -49,9 +57,12 @@ class PetitionAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         if not change:
             obj.status = Petition.Status.MODERATION
+            obj.deadline = obj.category.maximum_deadline(timezone.now())
             obj.save()
         elif "status" in form.changed_data:
-            change_status(obj.pk, obj.status, obj.moderation_reason)
+            saved = change_status(obj.pk, obj.status, obj.moderation_reason)
+            obj.status = saved.status
+            obj.status_changed_at = saved.status_changed_at
 
 @admin.register(Response)
 class ResponseAdmin(admin.ModelAdmin):

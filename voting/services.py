@@ -1,4 +1,5 @@
 ﻿from django.db import IntegrityError, transaction
+from django.utils import timezone
 from rest_framework.exceptions import APIException
 from petitions.models import Petition
 from .models import Vote
@@ -15,7 +16,12 @@ def cast_vote(petition_id, user):
                 raise VoteConflict()
             vote = Vote.objects.create(user=user, petition=petition)
             count = Vote.objects.filter(petition=petition).count()
-            return vote, count
+            threshold = petition.category.vote_threshold
+            if threshold is not None and count >= threshold:
+                petition.status = Petition.Status.IN_REVIEW
+                petition.status_changed_at = timezone.now()
+                petition.save(update_fields=["status", "status_changed_at"])
+            return vote, count, petition.status, petition.is_active()
     except IntegrityError:
         raise VoteConflict()
 

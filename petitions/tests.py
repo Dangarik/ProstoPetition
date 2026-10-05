@@ -11,7 +11,7 @@ class ApiTests(TestCase):
         self.author = User.objects.create_user(username="author", email="author@example.com", password="StrongPass!123")
         self.voter = User.objects.create_user(username="voter", email="voter@example.com", password="StrongPass!123")
         self.admin = User.objects.create_superuser(username="admin", email="admin@example.com", password="StrongPass!123")
-        self.category = Category.objects.create(name="Освіта")
+        self.category = Category.objects.create(name="Освіта", vote_threshold=2)
         self.client = Client(enforce_csrf_checks=True)
         self.token = self.client.get("/api/auth/csrf/").json()["csrfToken"]
 
@@ -50,11 +50,15 @@ class ApiTests(TestCase):
                                 content_type="application/json", HTTP_X_CSRFTOKEN=token).status_code, 400)
 
     def test_create_visibility_search_filter_sort_and_delete(self):
-        data = {"title": "Нові дороги", "text": "Ремонт дороги", "category": self.category.id,
-                "deadline": (timezone.now() + timedelta(days=10)).isoformat()}
+        data = {"title": "Нові дороги", "text": "Ремонт дороги", "category": self.category.id}
         self.assertEqual(self.send("post", "/api/petitions/", data).status_code, 403)
+        before = timezone.now()
         created = self.send("post", "/api/petitions/", data, self.author)
+        after = timezone.now()
         self.assertEqual(created.status_code, 201)
+        deadline = timezone.datetime.fromisoformat(created.json()["deadline"])
+        self.assertGreaterEqual(deadline, self.category.maximum_deadline(before))
+        self.assertLessEqual(deadline, self.category.maximum_deadline(after))
         pk = created.json()["id"]
         self.assertEqual(created.json()["status"], "moderation")
         self.assertEqual(self.send("get", "/api/petitions/").json()["count"], 0)
@@ -73,6 +77,7 @@ class ApiTests(TestCase):
         status_url = f"/api/petitions/{petition.id}/status/"
         self.assertEqual(self.send("post", vote_url, user=self.voter).status_code, 409)
         self.assertEqual(self.send("patch", status_url, {"status": "active"}, user=self.author).status_code, 403)
+        self.assertEqual(self.send("patch", status_url, {"status": "active", "vote_threshold": 2}, user=self.admin).status_code, 400)
         self.assertEqual(self.send("patch", status_url, {"status": "active"}, user=self.admin).status_code, 200)
         self.assertEqual(self.send("post", vote_url, user=self.voter, csrf=False).status_code, 403)
         first = self.send("post", vote_url, user=self.voter)
@@ -111,5 +116,91 @@ class ApiTests(TestCase):
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
                 Vote.objects.create(user=self.voter, petition=petition)
+
+    def test_category_duration_and_vote_threshold(self):
+        category_url = "/api/categories/"
+        self.assertEqual(self.send("post", category_url, {
+            "name": "Без порогу", "max_years": 0, "max_months": 0, "max_days": 10,
+        }, user=self.admin).status_code, 400)
+        self.assertEqual(self.send("post", category_url, {
+            "name": "Від’ємний поріг", "max_years": 0, "max_months": 0, "max_days": 10,
+            "vote_threshold": -1,
+        }, user=self.admin).status_code, 400)
+        self.assertEqual(self.send("post", category_url, {
+            "name": "Неправильна", "max_years": -1, "max_months": 0, "max_days": 0, "vote_threshold": 2,
+        }, user=self.admin).status_code, 400)
+        self.assertEqual(self.send("post", category_url, {
+            "name": "Нуль", "max_years": 0, "max_months": 0, "max_days": 0, "vote_threshold": 2,
+        }, user=self.admin).status_code, 400)
+        made = self.send("post", category_url, {
+            "name": "Коротка", "max_years": 0, "max_months": 0, "max_days": 10, "vote_threshold": 2,
+        }, user=self.admin)
+        self.assertEqual(made.status_code, 201)
+        category_id = made.json()["id"]
+        self.assertEqual(self.send("patch", f"{category_url}{category_id}/", {
+            "max_days": -1,
+        }, user=self.admin).status_code, 400)
+        petition_data = {"title": "Нова", "text": "Текст", "category": category_id}
+        self.assertEqual(self.send("post", "/api/petitions/", {
+            **petition_data, "deadline": (timezone.now() + timedelta(days=5)).isoformat(),
+        }, user=self.author).status_code, 400)
+        self.assertEqual(self.send("post", "/api/petitions/", {
+            **petition_data, "vote_threshold": 1,
+        }, user=self.author).status_code, 400)
+        self.assertEqual(self.send("post", "/api/petitions/", {
+            **petition_data, "vote_threshold": 1,
+        }, user=self.admin).status_code, 400)
+        before = timezone.now()
+        created = self.send("post", "/api/petitions/", petition_data, user=self.author)
+        after = timezone.now()
+        self.assertEqual(created.status_code, 201)
+        deadline = timezone.datetime.fromisoformat(created.json()["deadline"])
+        category = Category.objects.get(pk=category_id)
+        self.assertGreaterEqual(deadline, category.maximum_deadline(before))
+        self.assertLessEqual(deadline, category.maximum_deadline(after))
+        self.assertEqual(created.json()["vote_threshold"], 2)
+        petition_id = created.json()["id"]
+        status_url = f"/api/petitions/{petition_id}/status/"
+        self.assertEqual(self.send("patch", status_url, {
+            "status": "active", "vote_threshold": -1,
+        }, user=self.admin).status_code, 400)
+        activated = self.send("patch", status_url, {"status": "active"}, user=self.admin)
+        self.assertEqual(activated.status_code, 200)
+        self.assertEqual(activated.json()["vote_threshold"], 2)
+        first = self.send("post", f"/api/petitions/{petition_id}/vote/", user=self.voter)
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(first.json()["status"], "active")
+        second = self.send("post", f"/api/petitions/{petition_id}/vote/", user=self.author)
+        self.assertEqual(second.status_code, 201)
+        self.assertEqual(second.json()["vote_count"], 2)
+        self.assertEqual(second.json()["status"], "in_review")
+        self.assertFalse(second.json()["is_active"])
+        self.assertEqual(self.send("post", f"/api/petitions/{petition_id}/vote/", user=self.admin).status_code, 409)
+        self.assertEqual(Petition.objects.get(pk=petition_id).status, "in_review")
+
+    def test_setting_threshold_for_existing_active_petition(self):
+        petition = self.create_petition(status=Petition.Status.ACTIVE)
+        self.assertEqual(petition.category.vote_threshold, 2)
+        self.assertEqual(self.send("post", f"/api/petitions/{petition.pk}/vote/", user=self.voter).status_code, 201)
+        changed = self.send("patch", f"/api/categories/{self.category.pk}/", {
+            "vote_threshold": 1,
+        }, user=self.admin)
+        self.assertEqual(changed.status_code, 200)
+        self.assertEqual(changed.json()["vote_threshold"], 1)
+        petition.refresh_from_db()
+        self.assertEqual(petition.status, "in_review")
+        self.assertEqual(self.send("get", f"/api/petitions/{petition.pk}/").json()["vote_threshold"], 1)
+
+    def test_legacy_category_needs_admin_threshold_before_voting(self):
+        category = Category.objects.create(name="Стара категорія")
+        petition = Petition.objects.create(
+            title="Стара активна", text="Текст", author=self.author, category=category,
+            deadline=timezone.now() + timedelta(days=5), status=Petition.Status.ACTIVE)
+        self.assertFalse(self.send("get", f"/api/petitions/{petition.pk}/").json()["is_active"])
+        self.assertEqual(self.send("post", f"/api/petitions/{petition.pk}/vote/", user=self.voter).status_code, 409)
+        self.assertEqual(self.send("patch", f"/api/categories/{category.pk}/", {
+            "vote_threshold": 2,
+        }, user=self.admin).status_code, 200)
+        self.assertTrue(self.send("get", f"/api/petitions/{petition.pk}/").json()["is_active"])
 
 

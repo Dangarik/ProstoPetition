@@ -27,7 +27,7 @@ class Petition(models.Model):
         default='Без теми'
     )
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='prosto_petition_set')
-    answear = models.TextField(blank=True, null=True)  # Поле для відповіді
+    answear = models.TextField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
         if self.answear:
@@ -39,9 +39,9 @@ class Petition(models.Model):
         return self.title
 
 class PetitionSignature(models.Model):
-    petition = models.ForeignKey(Petition, on_delete=models.CASCADE, related_name='signatures_list')  # Петиція
-    user = models.ForeignKey(User, on_delete=models.CASCADE)  # Користувач, який підписав
-    timestamp = models.DateTimeField(auto_now_add=True)  # Час підпису
+    petition = models.ForeignKey(Petition, on_delete=models.CASCADE, related_name='signatures_list')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('petition', 'user')

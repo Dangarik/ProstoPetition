@@ -32,8 +32,3 @@ export function confirmedVoteKey(userId, petitionId) {
   return 'vote-confirmed:' + userId + ':' + petitionId
 }
 
-export const PAGE_SIZE = 20
-
-export function voteLabel(count, threshold) {
-  return threshold ? `${count} / ${threshold} голосів` : `${count} голосів`
-}
