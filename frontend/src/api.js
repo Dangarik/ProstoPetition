@@ -99,6 +99,7 @@ export const api = {
   register: (data) => request('/auth/register/', { method: 'POST', body: data }),
   logout: () => request('/auth/logout/', { method: 'POST', body: {} }),
   categories: () => request('/categories/'),
+  deleteCategory: (id) => request('/categories/' + encodeURIComponent(id) + '/', { method: 'DELETE' }),
   createCategory: (data) => request('/categories/', { method: 'POST', body: data }),
   updateCategory: (id, data) => request('/categories/' + encodeURIComponent(id) + '/', { method: 'PATCH', body: data }),
   listPetitions: (params = {}, options = {}) => request(queryPath('/petitions/', params), options),

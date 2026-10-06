@@ -6,6 +6,109 @@ from django.utils import timezone
 from .models import Category, Petition, Response
 
 class ApiTests(TestCase):
+    def test_hidden_status_is_no_longer_supported(self):
+        petition = self.create_petition(status="active")
+        result = self.send("patch", f"/api/petitions/{petition.pk}/status/",
+                           {"status": "hidden", "reason": "Причина"}, self.admin)
+        self.assertEqual(result.status_code, 400)
+        self.assertEqual(self.send("get", "/api/petitions/?status=hidden", user=self.admin).status_code, 400)
+        petition.refresh_from_db()
+        self.assertEqual(petition.status, "active")
+
+    def test_expiration_command_preserves_other_states_votes_and_answers(self):
+        from io import StringIO
+        from unittest.mock import patch
+        from django.core.management import call_command
+        from voting.models import Vote
+        now = timezone.now()
+        petitions = {
+            state: self.create_petition(status=state, deadline=now)
+            for state in Petition.Status.values if state != Petition.Status.EXPIRED
+        }
+        vote = Vote.objects.create(petition=petitions["active"], user=self.voter)
+        response = Response.objects.create(petition=petitions["answered"], author=self.admin, text="Рішення")
+        future = self.create_petition(status="active", deadline=now + timedelta(days=1))
+        with patch("petitions.services.timezone.now", return_value=now):
+            output = StringIO()
+            call_command("expire_petitions", stdout=output)
+            self.assertIn("1", output.getvalue())
+            output = StringIO()
+            call_command("expire_petitions", stdout=output)
+            self.assertIn("0", output.getvalue())
+        for state, petition in petitions.items():
+            petition.refresh_from_db()
+            self.assertEqual(petition.status, "expired" if state == "active" else state)
+        self.assertEqual(petitions["active"].status_changed_at, now)
+        future.refresh_from_db()
+        self.assertEqual(future.status, "active")
+        self.assertTrue(Vote.objects.filter(pk=vote.pk).exists())
+        self.assertEqual(Response.objects.get(pk=response.pk).text, "Рішення")
+
+    def test_expiration_is_saved_when_vote_is_rejected(self):
+        from voting.models import Vote
+        petition = self.create_petition(status="active")
+        url = f"/api/petitions/{petition.pk}/vote/"
+        self.assertEqual(self.send("post", url, user=self.voter).status_code, 201)
+        Petition.objects.filter(pk=petition.pk).update(deadline=timezone.now() - timedelta(seconds=1))
+        for user in (self.author, self.voter):
+            result = self.send("post", url, user=user)
+            self.assertEqual(result.status_code, 409)
+            self.assertEqual(result.json()["detail"], "Термін збору голосів завершено.")
+        petition.refresh_from_db()
+        self.assertEqual(petition.status, "expired")
+        self.assertEqual(Vote.objects.filter(petition=petition).count(), 1)
+
+    def test_reads_expire_petitions_and_keep_them_public(self):
+        paths = [
+            ("/api/petitions/?status=expired", None),
+            ("/api/admin/petitions/", self.admin),
+            ("/api/admin/statistics/", self.admin),
+            ("/api/auth/profile/", self.author),
+        ]
+        for path, user in paths:
+            with self.subTest(path=path):
+                petition = self.create_petition(status="active", deadline=timezone.now() - timedelta(seconds=1))
+                result = self.send("get", path, user=user)
+                self.assertEqual(result.status_code, 200)
+                petition.refresh_from_db()
+                self.assertEqual(petition.status, "expired")
+                detail = self.send("get", f"/api/petitions/{petition.pk}/")
+                self.assertEqual(detail.status_code, 200)
+                self.assertEqual(detail.json()["status"], "expired")
+                self.assertFalse(detail.json()["is_active"])
+        petition = self.create_petition(status="active", deadline=timezone.now() - timedelta(seconds=1))
+        detail = self.send("get", f"/api/petitions/{petition.pk}/")
+        self.assertEqual(detail.json()["status"], "expired")
+        self.assertGreater(self.send("get", "/api/petitions/?status=expired").json()["count"], 0)
+
+    def test_expired_petition_cannot_be_sent_to_review(self):
+        from voting.models import Vote
+        petition = self.create_petition(status="active", deadline=timezone.now() - timedelta(seconds=1))
+        Vote.objects.create(petition=petition, user=self.voter)
+        self.assertEqual(self.send("patch", f"/api/petitions/{petition.pk}/status/",
+                                  {"status": "in_review"}, self.admin).status_code, 409)
+        self.send("patch", f"/api/categories/{self.category.pk}/", {"vote_threshold": 1}, self.admin)
+        petition.refresh_from_db()
+        self.assertEqual(petition.status, "expired")
+
+    def test_category_deletion_permissions_and_preservation(self):
+        from voting.models import Vote
+        empty = Category.objects.create(name="Порожня", vote_threshold=2)
+        url = f"/api/categories/{empty.pk}/"
+        self.assertEqual(self.send("delete", url).status_code, 403)
+        self.assertEqual(self.send("delete", url, user=self.author).status_code, 403)
+        self.assertEqual(self.send("delete", url, user=self.admin, csrf=False).status_code, 403)
+        petition = self.create_petition()
+        vote = Vote.objects.create(petition=petition, user=self.voter)
+        used = self.send("delete", f"/api/categories/{self.category.pk}/", user=self.admin)
+        self.assertEqual(used.status_code, 409)
+        self.assertIn("detail", used.json())
+        self.assertEqual(self.send("delete", url, user=self.admin).status_code, 204)
+        self.assertEqual(self.send("delete", url, user=self.admin).status_code, 404)
+        self.assertNotIn(empty.pk, [item["id"] for item in self.send("get", "/api/categories/").json()])
+        self.assertTrue(Petition.objects.filter(pk=petition.pk).exists())
+        self.assertTrue(Vote.objects.filter(pk=vote.pk).exists())
+
     def setUp(self):
         User = get_user_model()
         self.author = User.objects.create_user(username="author", email="author@example.com", password="StrongPass!123")

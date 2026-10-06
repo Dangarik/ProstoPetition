@@ -14,6 +14,8 @@ const loading = ref(true)
 const error = ref('')
 const statsError = ref('')
 const categoryError = ref('')
+const categoryMessage = ref('')
+const categoryDeletingId = ref(null)
 const newCategory = reactive({ name: '', vote_threshold: '', max_years: 1, max_months: 0, max_days: 0 })
 const categoryDrafts = reactive({})
 const categoryPending = ref(false)
@@ -28,15 +30,15 @@ const choices = [
   { value: 'moderation', label: 'На модерації' },
   { value: 'active', label: 'Активна' },
   { value: 'rejected', label: 'Відхилена' },
-  { value: 'hidden', label: 'Прихована' },
   { value: 'in_review', label: 'На розгляді' },
   { value: 'answered', label: 'З відповіддю' },
   { value: 'closed', label: 'Закрита' },
+  { value: 'expired', label: 'Термін дії минув' },
 ]
 
 function transitions(status) {
   if (status === 'moderation') return ['active', 'rejected']
-  if (status === 'active') return ['hidden', 'in_review', 'closed']
+  if (status === 'active') return ['in_review', 'closed']
   return []
 }
 
@@ -99,8 +101,8 @@ async function saveStatus(petition) {
   const draft = drafts[petition.id]
   actionErrors[petition.id] = ''
   if (!draft?.status) return
-  if (['rejected', 'hidden'].includes(draft.status) && !draft.reason.trim()) {
-    actionErrors[petition.id] = 'Вкажіть причину відхилення або приховування.'
+  if (draft.status === 'rejected' && !draft.reason.trim()) {
+    actionErrors[petition.id] = 'Вкажіть причину відхилення.'
     return
   }
   pendingId.value = petition.id
@@ -148,6 +150,7 @@ async function addCategory() {
 }
 
 async function saveCategory(category) {
+  if (categoryDeletingId.value !== null || categoryPendingId.value !== null) return
   categoryError.value = ''
   categoryPendingId.value = category.id
   try {
@@ -157,6 +160,26 @@ async function saveCategory(category) {
     categoryError.value = err.message
   } finally {
     categoryPendingId.value = null
+  }
+}
+
+async function deleteCategory(category) {
+  if (categoryDeletingId.value !== null || categoryPendingId.value !== null) return
+  if (!window.confirm('Ви впевнені, що хочете видалити цю категорію?')) return
+  categoryError.value = ''
+  categoryMessage.value = ''
+  categoryDeletingId.value = category.id
+  try {
+    await api.deleteCategory(category.id)
+    categories.value = categories.value.filter((item) => item.id !== category.id)
+    delete categoryDrafts[category.id]
+    categoryMessage.value = 'Категорію успішно видалено.'
+  } catch (err) {
+    categoryError.value = err.status === 409
+      ? 'Неможливо видалити категорію, оскільки вона використовується петиціями'
+      : err.message
+  } finally {
+    categoryDeletingId.value = null
   }
 }
 
@@ -213,7 +236,7 @@ loadCategories()
                   <option v-for="value in transitions(petition.status)" :key="value" :value="value">{{ STATUS[value] }}</option>
                 </select>
               </div>
-              <div v-if="['rejected', 'hidden'].includes(drafts[petition.id].status)" class="col-md-5">
+              <div v-if="drafts[petition.id].status === 'rejected'" class="col-md-5">
                 <label class="form-label" :for="'reason-' + petition.id">Причина</label>
                 <input :id="'reason-' + petition.id" v-model="drafts[petition.id].reason" class="form-control" maxlength="1000" />
               </div>
@@ -238,6 +261,7 @@ loadCategories()
       <aside class="col-lg-4">
         <div class="filter-panel">
           <h2 class="h5 mb-3">Категорії</h2>
+          <div v-if="categoryMessage" class="alert alert-success" role="status">{{ categoryMessage }}</div>
           <div v-if="categoryError" class="alert alert-warning" role="alert">{{ categoryError }} <button class="link-button" type="button" @click="loadCategories">Повторити</button></div>
           <div v-if="categories.length" class="d-grid gap-3 mb-4">
             <form v-for="category in categories" :key="category.id" class="border rounded p-3" @submit.prevent="saveCategory(category)">
@@ -253,7 +277,8 @@ loadCategories()
                     class="form-control" type="number" min="0" :max="field.max" step="1" required />
                 </div>
               </div>
-              <button class="btn btn-outline-primary btn-sm" type="submit" :disabled="categoryPendingId !== null">{{ categoryPendingId === category.id ? 'Зберігаємо…' : 'Зберегти ліміт' }}</button>
+              <button class="btn btn-outline-primary btn-sm" type="submit" :disabled="categoryPendingId !== null || categoryDeletingId !== null">{{ categoryPendingId === category.id ? 'Зберігаємо…' : 'Зберегти ліміт' }}</button>
+              <button class="btn btn-outline-danger btn-sm ms-2" type="button" :disabled="categoryPendingId !== null || categoryDeletingId !== null" @click="deleteCategory(category)">{{ categoryDeletingId === category.id ? 'Видаляємо…' : 'Видалити' }}</button>
             </form>
           </div>
           <p v-else class="text-secondary">Категорій ще немає.</p>

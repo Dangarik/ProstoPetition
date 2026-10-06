@@ -2,13 +2,13 @@ export const STATUS = Object.freeze({
   moderation: 'На модерації',
   rejected: 'Відхилена',
   active: 'Активна',
-  hidden: 'Прихована',
   in_review: 'На розгляді',
   answered: 'З відповіддю',
   closed: 'Закрита',
+  expired: 'Термін дії минув',
 })
 
-export const PUBLIC_STATUSES = ['active', 'in_review', 'answered', 'closed']
+export const PUBLIC_STATUSES = ['active', 'in_review', 'answered', 'closed', 'expired']
 
 export function statusLabel(value) {
   return STATUS[value] || value || 'Невідомий'
