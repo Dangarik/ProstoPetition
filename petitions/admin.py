@@ -2,7 +2,7 @@
 from django.contrib import admin
 from django.utils import timezone
 from .models import Category, Petition, Response
-from .services import TRANSITIONS, change_status, publish_response, reconcile_category_threshold
+from .services import TRANSITIONS, change_status, publish_response, reconcile_category_threshold, expire_petitions
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
@@ -26,7 +26,7 @@ class PetitionAdminForm(forms.ModelForm):
             target = data.get("status")
             if target not in TRANSITIONS.get(current.status, set()):
                 self.add_error("status", "Недозволений перехід стану.")
-            if target in (Petition.Status.REJECTED, Petition.Status.HIDDEN) and not (data.get("moderation_reason") or "").strip():
+            if target == Petition.Status.REJECTED and not (data.get("moderation_reason") or "").strip():
                 self.add_error("moderation_reason", "Причина є обов’язковою.")
             if target == Petition.Status.ACTIVE and current.deadline <= timezone.now():
                 self.add_error("status", "Термін петиції вже завершився.")
@@ -37,6 +37,10 @@ class PetitionAdminForm(forms.ModelForm):
 @admin.register(Petition)
 class PetitionAdmin(admin.ModelAdmin):
     form = PetitionAdminForm
+
+    def get_queryset(self, request):
+        expire_petitions()
+        return super().get_queryset(request)
     list_display = ("title", "author", "category", "status", "deadline", "created_at", "vote_count")
     list_filter = ("status", "category")
     search_fields = ("title", "text", "author__username")

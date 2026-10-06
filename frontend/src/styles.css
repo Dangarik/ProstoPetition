@@ -47,7 +47,7 @@ a:hover { color: #0d4767; }
 .status-active { background: #e2f4e9; color: #1d7450; }
 .status-in_review { background: #e8eef9; color: #325b96; }
 .status-answered { background: #e5f3f2; color: #176f71; }
-.status-rejected, .status-hidden { background: #fae7e3; color: #9d4b43; }
+.status-rejected { background: #fae7e3; color: #9d4b43; }
 .status-moderation { background: #fff2dc; color: #936523; }
 .card-meta { font-size: .82rem; }
 .card-bottom { border-top: 1px solid #edf0ef; }

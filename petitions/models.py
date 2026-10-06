@@ -48,12 +48,12 @@ class Petition(models.Model):
         MODERATION = "moderation", "На модерації"
         REJECTED = "rejected", "Відхилена"
         ACTIVE = "active", "Активна"
-        HIDDEN = "hidden", "Прихована"
         IN_REVIEW = "in_review", "На розгляді"
         ANSWERED = "answered", "З відповіддю"
         CLOSED = "closed", "Закрита"
+        EXPIRED = "expired", "Термін дії минув"
 
-    PUBLIC_STATUSES = (Status.ACTIVE, Status.IN_REVIEW, Status.ANSWERED, Status.CLOSED)
+    PUBLIC_STATUSES = (Status.ACTIVE, Status.IN_REVIEW, Status.ANSWERED, Status.CLOSED, Status.EXPIRED)
     title = models.CharField(max_length=255)
     text = models.TextField()
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="petitions")

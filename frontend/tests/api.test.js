@@ -4,6 +4,28 @@ import { api, ApiError, clearCsrfToken } from '../src/api.js'
 
 const originalFetch = globalThis.fetch
 
+test('category deletion sends DELETE with CSRF and accepts an empty 204', async () => {
+  const calls = []
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options })
+    return url === '/api/auth/csrf/'
+      ? json({ csrfToken: 'delete-token' })
+      : new Response(null, { status: 204 })
+  }
+  assert.equal(await api.deleteCategory(7), null)
+  assert.equal(calls[1].url, '/api/categories/7/')
+  assert.equal(calls[1].options.method, 'DELETE')
+  assert.equal(calls[1].options.headers['X-CSRFToken'], 'delete-token')
+  assert.equal(calls[1].options.credentials, 'same-origin')
+})
+
+test('expired status is translated and available in public filters', async () => {
+  const { STATUS, PUBLIC_STATUSES, statusLabel } = await import('../src/format.js')
+  assert.equal(statusLabel('expired'), 'Термін дії минув')
+  assert.ok(PUBLIC_STATUSES.includes('expired'))
+  assert.ok(!Object.hasOwn(STATUS, 'hidden'))
+})
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,

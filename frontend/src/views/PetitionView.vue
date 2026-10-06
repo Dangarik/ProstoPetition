@@ -21,6 +21,7 @@ const canDelete = computed(() => petition.value && session.user &&
   petition.value.vote_count === 0 &&
   !['in_review', 'answered', 'closed'].includes(petition.value.status))
 const voteUnavailableMessage = computed(() => {
+  if (petition.value?.status === 'expired') return 'Термін збору голосів завершено'
   if (petition.value?.status === 'in_review') return 'Петицію передано на розгляд.'
   if (petition.value?.status === 'active' && !petition.value.vote_threshold) {
     return 'Адміністратор має налаштувати поріг категорії.'

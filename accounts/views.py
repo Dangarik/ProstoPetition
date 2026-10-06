@@ -8,6 +8,7 @@ from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_POST
 from petitions.models import Petition
+from petitions.services import expire_petitions
 
 def error(message, status=400):
     return JsonResponse({"detail": message}, status=status)
@@ -77,6 +78,7 @@ def logout_view(request):
 def profile(request):
     if not request.user.is_authenticated:
         return error("Потрібна авторизація.", 403)
+    expire_petitions(Petition.objects.filter(author=request.user))
     petitions = Petition.objects.filter(author=request.user).order_by("-created_at").values("id", "title", "status", "created_at")
     return JsonResponse({"user": user_json(request.user), "petitions": list(petitions)})
 

@@ -9,9 +9,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import Category, Petition
 from .serializers import CategorySerializer, PetitionSerializer, ResponseSerializer
-from .services import PetitionConflict, change_status, publish_response, reconcile_category_threshold
+from .services import PetitionConflict, change_status, publish_response, reconcile_category_threshold, expire_petitions
 
 def petition_queryset():
+    expire_petitions()
     return Petition.objects.select_related("author", "category", "official_response", "official_response__author").annotate(vote_count=Count("votes"))
 
 class PetitionListCreate(generics.ListCreateAPIView):
@@ -134,6 +135,7 @@ class OfficialResponseView(APIView):
 class StatisticsView(APIView):
     permission_classes = [IsAdminUser]
     def get(self, request):
+        expire_petitions()
         counts = dict(Petition.objects.values("status").annotate(count=Count("id")).values_list("status", "count"))
         from django.contrib.auth import get_user_model
         from voting.models import Vote
