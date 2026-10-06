@@ -2,7 +2,7 @@
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.utils import timezone
-from .models import Category, Petition, Response
+from petitions.models import Category, Petition, Response
 
 class AdminTests(TestCase):
     def test_admin_adds_petition_with_category_threshold(self):

@@ -2,7 +2,7 @@
 from django.contrib import admin
 from django.utils import timezone
 from .models import Category, Petition, Response
-from .services import TRANSITIONS, change_status, publish_response, reconcile_category_threshold, expire_petitions
+from .services import TRANSITIONS, PetitionConflict, change_status, publish_response, reconcile_category_threshold, expire_petitions, set_petition_visibility
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
@@ -41,15 +41,16 @@ class PetitionAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         expire_petitions()
         return super().get_queryset(request)
-    list_display = ("title", "author", "category", "status", "deadline", "created_at", "vote_count")
-    list_filter = ("status", "category")
+    list_display = ("title", "author", "category", "status", "is_hidden", "deadline", "created_at", "vote_count")
+    list_filter = ("status", "is_hidden", "category")
+    actions = ("hide_petitions", "restore_petitions")
     search_fields = ("title", "text", "author__username")
-    readonly_fields = ("author", "category", "title", "text", "deadline", "created_at", "status_changed_at")
+    readonly_fields = ("author", "category", "title", "text", "deadline", "created_at", "status_changed_at", "is_hidden")
 
     def get_fields(self, request, obj=None):
         if obj:
             return ("title", "text", "author", "category", "deadline", "created_at",
-                    "status", "moderation_reason", "status_changed_at")
+                    "status", "moderation_reason", "status_changed_at", "is_hidden")
         return ("title", "text", "author", "category", "deadline")
 
     def get_readonly_fields(self, request, obj=None):
@@ -57,6 +58,21 @@ class PetitionAdmin(admin.ModelAdmin):
 
     def vote_count(self, obj):
         return obj.votes.count()
+
+    def update_visibility(self, request, queryset, is_hidden):
+        for petition_id in queryset.values_list("pk", flat=True):
+            try:
+                set_petition_visibility(petition_id, is_hidden)
+            except PetitionConflict as error:
+                self.message_user(request, str(error.detail), level="error")
+
+    @admin.action(description="Приховати прострочені та відхилені петиції", permissions=["change"])
+    def hide_petitions(self, request, queryset):
+        self.update_visibility(request, queryset, True)
+
+    @admin.action(description="Повернути зі схованих", permissions=["change"])
+    def restore_petitions(self, request, queryset):
+        self.update_visibility(request, queryset, False)
 
     def save_model(self, request, obj, form, change):
         if not change:

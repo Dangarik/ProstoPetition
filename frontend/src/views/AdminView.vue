@@ -75,9 +75,7 @@ async function loadPetitions() {
   loading.value = true
   error.value = ''
   try {
-    const data = currentStatus.value === 'all'
-      ? await api.moderationList(page.value)
-      : await api.listPetitions({ status: currentStatus.value, page: page.value })
+    const data = await api.moderationList(page.value, currentStatus.value === 'all' ? '' : currentStatus.value)
     petitions.value = data.results || []
     count.value = data.count || 0
     for (const petition of petitions.value) {
@@ -109,6 +107,20 @@ async function saveStatus(petition) {
   try {
     await api.changeStatus(petition.id, { status: draft.status, reason: draft.reason.trim() })
     await Promise.all([loadPetitions(), loadStats()])
+  } catch (err) {
+    actionErrors[petition.id] = err.message
+  } finally {
+    pendingId.value = null
+  }
+}
+
+async function toggleVisibility(petition) {
+  if (pendingId.value !== null) return
+  actionErrors[petition.id] = ''
+  pendingId.value = petition.id
+  try {
+    const updated = await api.setPetitionVisibility(petition.id, !petition.is_hidden)
+    Object.assign(petition, updated)
   } catch (err) {
     actionErrors[petition.id] = err.message
   } finally {
@@ -229,6 +241,12 @@ loadCategories()
               <span class="vote-count"><strong>{{ petition.vote_count }}</strong><span v-if="petition.vote_threshold"> / {{ petition.vote_threshold }}</span> голосів</span>
             </div>
             <p class="text-secondary mt-3 mb-3">{{ excerpt(petition.text, 260) }}</p>
+            <div v-if="['expired', 'rejected'].includes(petition.status)" class="mb-3">
+              <span v-if="petition.is_hidden" class="text-secondary me-3">Прихована із загального списку</span>
+              <button class="btn btn-outline-secondary btn-sm" type="button" :disabled="pendingId !== null" @click="toggleVisibility(petition)">
+                {{ petition.is_hidden ? 'Повернути зі схованих' : 'Приховати' }}
+              </button>
+            </div>
             <div v-if="petition.moderation_reason" class="alert alert-warning py-2">Причина: {{ petition.moderation_reason }}</div>
             <div v-if="transitions(petition.status).length" class="row g-2 align-items-end">
               <div class="col-md-4"><label class="form-label" :for="'action-' + petition.id">Новий статус</label>

@@ -50,7 +50,7 @@ onMounted(load)
         <RouterLink v-for="petition in petitions" :key="petition.id"
           class="list-group-item list-group-item-action d-flex flex-wrap align-items-center justify-content-between gap-3"
           :to="{ name: 'petition', params: { id: petition.id } }">
-          <span><strong>{{ petition.title }}</strong><small class="d-block text-secondary mt-1">{{ dateLabel(petition.created_at) }}</small></span>
+          <span><strong>{{ petition.title }}</strong><small class="d-block text-secondary mt-1">{{ dateLabel(petition.created_at) }}<span v-if="petition.is_hidden"> · Прихована із загального списку</span></small></span>
           <span class="status-pill" :class="'status-' + petition.status">{{ statusLabel(petition.status) }}</span>
         </RouterLink>
       </div>

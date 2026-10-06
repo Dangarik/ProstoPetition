@@ -42,9 +42,9 @@ class PetitionSerializer(serializers.ModelSerializer):
         model = Petition
         fields = ["id", "title", "text", "author", "category", "category_name", "status",
                   "deadline", "created_at", "status_changed_at", "moderation_reason",
-                  "vote_count", "vote_threshold", "is_active", "official_response"]
+                  "vote_count", "vote_threshold", "is_active", "official_response", "is_hidden"]
         read_only_fields = ["id", "author", "status", "deadline", "created_at", "status_changed_at",
-                            "moderation_reason", "vote_count", "vote_threshold", "is_active", "official_response"]
+                            "moderation_reason", "vote_count", "vote_threshold", "is_active", "official_response", "is_hidden"]
 
     def validate(self, attrs):
         if "vote_threshold" in self.initial_data:

@@ -31,8 +31,8 @@ class RemoveHiddenMigrationTests(TransactionTestCase):
         response = Response.objects.create(petition=answered, author=user, text="Офіційна відповідь")
         try:
             executor = MigrationExecutor(connection)
-            executor.migrate([("petitions", "0006_alter_petition_status")])
-            from .models import Petition as CurrentPetition, Response as CurrentResponse
+            executor.migrate([("petitions", "0007_petition_is_hidden")])
+            from petitions.models import Petition as CurrentPetition, Response as CurrentResponse
             from voting.models import Vote as CurrentVote
             migrated = CurrentPetition.objects.get(pk=hidden.pk)
             self.assertEqual(migrated.status, "moderation")
