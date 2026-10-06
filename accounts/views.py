@@ -79,7 +79,7 @@ def profile(request):
     if not request.user.is_authenticated:
         return error("Потрібна авторизація.", 403)
     expire_petitions(Petition.objects.filter(author=request.user))
-    petitions = Petition.objects.filter(author=request.user).order_by("-created_at").values("id", "title", "status", "created_at")
+    petitions = Petition.objects.filter(author=request.user).order_by("-created_at").values("id", "title", "status", "created_at", "is_hidden")
     return JsonResponse({"user": user_json(request.user), "petitions": list(petitions)})
 
 def csrf_failure(request, reason=""):

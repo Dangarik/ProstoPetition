@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import Category, Petition
 from .serializers import CategorySerializer, PetitionSerializer, ResponseSerializer
-from .services import PetitionConflict, change_status, publish_response, reconcile_category_threshold, expire_petitions
+from .services import PetitionConflict, change_status, publish_response, reconcile_category_threshold, expire_petitions, set_petition_visibility
 
 def petition_queryset():
     expire_petitions()
@@ -20,7 +20,7 @@ class PetitionListCreate(generics.ListCreateAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        qs = petition_queryset()
+        qs = petition_queryset().filter(is_hidden=False)
         if not self.request.user.is_staff:
             qs = qs.filter(status__in=Petition.PUBLIC_STATUSES)
         status_value = self.request.query_params.get("status")
@@ -58,8 +58,8 @@ class PetitionDetail(generics.RetrieveDestroyAPIView):
         if user.is_staff:
             return qs
         if user.is_authenticated:
-            return qs.filter(Q(status__in=Petition.PUBLIC_STATUSES) | Q(author=user))
-        return qs.filter(status__in=Petition.PUBLIC_STATUSES)
+            return qs.filter(Q(status__in=Petition.PUBLIC_STATUSES, is_hidden=False) | Q(author=user))
+        return qs.filter(status__in=Petition.PUBLIC_STATUSES, is_hidden=False)
 
     def delete(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -105,7 +105,24 @@ class ModerationList(generics.ListAPIView):
     serializer_class = PetitionSerializer
     permission_classes = [IsAdminUser]
     def get_queryset(self):
-        return petition_queryset().order_by("-created_at")
+        qs = petition_queryset()
+        status_value = self.request.query_params.get("status")
+        if status_value:
+            if status_value not in Petition.Status.values:
+                raise ValidationError({"status": "Невідомий статус."})
+            qs = qs.filter(status=status_value)
+        return qs.order_by("-created_at")
+
+class VisibilityView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, pk):
+        get_object_or_404(Petition, pk=pk)
+        is_hidden = request.data.get("is_hidden")
+        if not isinstance(is_hidden, bool):
+            raise ValidationError({"is_hidden": "Очікується true або false."})
+        petition = set_petition_visibility(pk, is_hidden)
+        return Response(PetitionSerializer(petition_queryset().get(pk=petition.pk)).data)
 
 class StatusView(APIView):
     permission_classes = [IsAdminUser]

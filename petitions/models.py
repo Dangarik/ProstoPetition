@@ -63,6 +63,7 @@ class Petition(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     status_changed_at = models.DateTimeField(default=timezone.now)
     moderation_reason = models.TextField(blank=True)
+    is_hidden = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         indexes = [models.Index(fields=["status", "-created_at"])]

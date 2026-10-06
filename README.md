@@ -37,9 +37,10 @@ GET, DELETE /api/petitions/{id}/
 POST /api/petitions/{id}/vote/
 PATCH /api/petitions/{id}/status/
 POST /api/petitions/{id}/response/
+PATCH /api/petitions/{id}/visibility/
 
 GET /api/admin/petitions/
-GET /api/admin/statistics/
+GET /api/admin/statistics/.
 
 ## Backend
 
@@ -91,3 +92,30 @@ npm ci
 npm run dev
 
 Frontend використовує шлях /api. Під час локальної розробки Vite проксіює API-запити на Django за адресою http://127.0.0.1:8000.
+
+### Backend tests
+
+В активованому Python-середовищі, з кореня репозиторію:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest
+python -m pytest --cov=accounts --cov=petitions --cov=voting --cov-report=term-missing
+python manage.py check --settings=ProstoPetition.test_settings
+```
+
+Coverage враховує рядки та гілки accounts, petitions і voting; виключає міграції, тести та apps.py. Довільного мінімального порогу немає. Для локальних звітів:
+
+```bash
+python -m pytest --cov=accounts --cov=petitions --cov=voting --cov-report=term-missing --cov-report=html --cov-report=json:.test-artifacts/coverage.json
+```
+
+### Frontend tests
+
+```bash
+cd frontend
+npm ci
+npm run test
+npm run build
+```
+

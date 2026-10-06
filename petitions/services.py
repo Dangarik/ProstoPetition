@@ -68,3 +68,14 @@ def publish_response(petition_id, author, text):
         petition.save(update_fields=["status", "status_changed_at"])
         return response
 
+
+def set_petition_visibility(petition_id, is_hidden):
+    expire_petitions(Petition.objects.filter(pk=petition_id))
+    with transaction.atomic():
+        petition = Petition.objects.select_for_update().get(pk=petition_id)
+        if petition.status not in (Petition.Status.EXPIRED, Petition.Status.REJECTED):
+            raise PetitionConflict("Приховувати або повертати можна лише прострочені та відхилені петиції.")
+        petition.is_hidden = is_hidden
+        petition.save(update_fields=["is_hidden"])
+        return petition
+
